@@ -161,7 +161,15 @@ void loop() {
 }
 
 void update_sostenuto() {
-  sostenutoEngaged = !digitalRead(SOSTENUTO_PIN);
+  sostenutoEngaged = digitalRead(SOSTENUTO_PIN);
+
+  if(!sostenutoEngaged && lastSostenuto) { // sostenuto turned off
+    for(int i = 0; i < KEYBOARD_EXPANDER_LENGTH; i++) {
+      for(int j = 0; j < keyboard_expanders[i].iosLength * 2; j++) { // reset sostenuto state
+        keyboard_expanders[i].sostenuto[j] = 0;
+      }
+    }
+  }
 }
 
 void scan_buttons() {
@@ -227,11 +235,21 @@ void scan_notes() {
       keyboard_expander.current[j * 2]       = ~keyboard_expander.ios[j].readPort(MCP23017Port::A);
       keyboard_expander.current[(j * 2) + 1] = ~keyboard_expander.ios[j].readPort(MCP23017Port::B);
 
+      if(keyboard_expander.sostenutoEnabled) {
+        keyboard_expander.current[j * 2] |= keyboard_expander.sostenuto[j * 2];
+        keyboard_expander.current[(j * 2) + 1] |= keyboard_expander.sostenuto[(j * 2) + 1];
+      }
+
       update_notes(keyboard_expander.channel, keyboard_expander.current[j * 2], keyboard_expander.last[j * 2], keyboard_expander.offset + j * 16);
       update_notes(keyboard_expander.channel, keyboard_expander.current[(j * 2) + 1], keyboard_expander.last[(j * 2) + 1], keyboard_expander.offset + j * 16 + 8);
 
       keyboard_expanders[i].last[j * 2] = keyboard_expander.current[j * 2];
       keyboard_expanders[i].last[(j * 2) + 1] = keyboard_expander.current[(j * 2) + 1];
+
+      if(!lastSostenuto && sostenutoEngaged) {
+        keyboard_expanders[i].sostenuto[j * 2] = keyboard_expander.current[j * 2];
+        keyboard_expanders[i].sostenuto[(j * 2) + 1] = keyboard_expander.current[(j * 2) + 1];
+      }
     }
   }
 }
